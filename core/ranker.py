@@ -4,9 +4,25 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from typing import Any
 
 from config import load_config
+from core.logger import logger
+from pydantic import BaseModel, Field
+
+
+class ClipHighlight(BaseModel):
+    """Pydantic validated structure for viral video highlights."""
+    title: str = Field(default="Viral Highlight")
+    start_time: float = Field(ge=0.0)
+    end_time: float = Field(ge=0.0)
+    score: int = Field(default=80, ge=0, le=100)
+    hook_score: int = Field(default=85, ge=0, le=100)
+    first_line: str = Field(default="")
+    hook_sentence: str = Field(default="")
+    virality_reason: str = Field(default="")
+    on_screen: str = Field(default="")
 
 # Criteria prompts tuned per content category
 PROMPT_CRITERIA = {
@@ -68,15 +84,15 @@ Transcript:
 """
 
 
-def get_llm_client(config: dict[str, Any]):
-    """Instantiate the active LLM client based on configuration."""
-    provider = config.get("llm_provider", "gemini").lower()
+def get_llm_client(config: dict[str, Any], provider_override: str | None = None):
+    """Instantiate an LLM caller based on configuration or provider override."""
+    provider = (provider_override or config.get("llm_provider", "gemini")).lower()
 
     if provider == "gemini":
         from google import genai  # type: ignore
         key = config.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY", "")
         if not key:
-            raise ValueError("GEMINI_API_KEY is not set.")
+            raise ValueError("GEMINI_API_KEY is not configured.")
         client = genai.Client(api_key=key)
         model_name = config.get("gemini_model", "gemini-2.5-flash")
 
@@ -95,7 +111,7 @@ def get_llm_client(config: dict[str, Any]):
         if provider == "groq":
             key = config.get("groq_api_key") or os.environ.get("GROQ_API_KEY", "")
             if not key:
-                raise ValueError("GROQ_API_KEY is not set.")
+                raise ValueError("GROQ_API_KEY is not configured.")
             client = OpenAI(api_key=key, base_url="https://api.groq.com/openai/v1")
             model_name = config.get("groq_model", "llama-3.3-70b-versatile")
 
@@ -109,7 +125,7 @@ def get_llm_client(config: dict[str, Any]):
         else:  # openai
             key = config.get("openai_api_key") or os.environ.get("OPENAI_API_KEY", "")
             if not key:
-                raise ValueError("OPENAI_API_KEY is not set.")
+                raise ValueError("OPENAI_API_KEY is not configured.")
             client = OpenAI(api_key=key)
             model_name = config.get("openai_model", "gpt-4o-mini")
 
@@ -124,6 +140,40 @@ def get_llm_client(config: dict[str, Any]):
         return _call_openai_compat
 
     raise ValueError(f"Unknown LLM provider: {provider}")
+
+
+def call_llm_with_resilience(prompt: str, config: dict[str, Any]) -> str:
+    """Execute LLM call with automatic multi-provider fallback and retry on rate limits."""
+    primary_provider = config.get("llm_provider", "gemini").lower()
+    providers_to_try = [primary_provider]
+
+    # Add available fallbacks in priority order
+    for fallback in ["gemini", "groq", "openai", "ollama"]:
+        if fallback not in providers_to_try:
+            providers_to_try.append(fallback)
+
+    last_error: Exception | None = None
+    for prov in providers_to_try:
+        try:
+            caller = get_llm_client(config, provider_override=prov)
+            # Try calling with exponential backoff on transient errors
+            for attempt in range(2):
+                try:
+                    logger.info(f"Querying LLM provider '{prov}'...")
+                    return caller(prompt)
+                except Exception as call_err:
+                    err_str = str(call_err).lower()
+                    if ("429" in err_str or "rate limit" in err_str or "quota" in err_str) and attempt == 0:
+                        logger.warning(f"Rate limited on {prov}, waiting 2s before retry...")
+                        time.sleep(2.0)
+                        continue
+                    raise call_err
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Provider '{prov}' failed: {e}. Trying next fallback...")
+            continue
+
+    raise RuntimeError(f"All LLM providers failed. Last error: {last_error}")
 
 
 def _extract_json(raw_text: str) -> Any:
@@ -165,11 +215,11 @@ def rank_highlights(
     num_clips: int = 5,
     content_type: str = "general",
     prompt_override: str = "",
+    energy_summary: str = "",
     config: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Rank transcript segments to extract top viral highlights."""
+    """Rank transcript segments to extract top viral highlights using resilient multi-provider LLM."""
     conf = config or load_config()
-    call_llm = get_llm_client(conf)
 
     segments = transcript.get("segments", [])
     if not segments:
@@ -181,34 +231,50 @@ def rank_highlights(
         lines.append(f"[{s['start']:.1f}s - {s['end']:.1f}s]: {s['text']}")
     transcript_text = "\n".join(lines)
 
-    criteria = PROMPT_CRITERIA.get(content_type.lower(), PROMPT_CRITERIA["general"])
-    if prompt_override:
-        criteria += f"\nADDITIONAL USER DIRECTION: {prompt_override}"
-
-    prompt = SYSTEM_TEMPLATE.format(
-        criteria=criteria,
-        content_type=content_type,
+    prompt = build_prompt_for_category(
+        category=content_type,
+        transcript_text=transcript_text,
         num_clips=num_clips,
-        transcript_text=transcript_text[:120000],  # generous context window
+        energy_summary=energy_summary,
+        custom_prompt=prompt_override,
     )
 
-    print(f"[ranker] Querying {conf.get('llm_provider', 'LLM').upper()} for {num_clips} highlights...")
-    raw_response = call_llm(prompt)
+    logger.info(f"Analyzing highlights for {num_clips} clips ({content_type}) with fallback chain...")
+    try:
+        raw_response = call_llm_with_resilience(prompt, conf)
+    except Exception as e:
+        logger.error(f"Failed LLM highlights ranking: {e}")
+        return []
 
     # Parse JSON
     try:
         data = _extract_json(raw_response)
-        highlights = data if isinstance(data, list) else data.get("highlights", [])
+        raw_highlights = data if isinstance(data, list) else data.get("highlights", [])
     except (json.JSONDecodeError, ValueError, KeyError, TypeError) as e:
-        print(f"[ranker] Failed parsing LLM response: {e}\nRaw was:\n{raw_response[:500]}")
+        logger.warning(f"Failed parsing LLM response: {e}\nRaw snippet: {raw_response[:300]}")
         return []
 
-    # Sanitize and deduplicate
+    # Sanitize and validate via Pydantic model
     duration = transcript.get("duration", 0.0)
     cleaned = []
-    for h in highlights:
-        start = float(h.get("start_time", 0.0))
-        end = float(h.get("end_time", 0.0))
+    for h in raw_highlights:
+        try:
+            val = ClipHighlight(
+                title=str(h.get("title") or "Viral Highlight").strip(),
+                start_time=float(h.get("start_time", 0.0)),
+                end_time=float(h.get("end_time", 0.0)),
+                score=int(h.get("score") or 80),
+                hook_score=int(h.get("hook_score") or 85),
+                first_line=str(h.get("first_line") or "").strip(),
+                hook_sentence=str(h.get("hook_sentence") or h.get("first_line") or "").strip(),
+                virality_reason=str(h.get("virality_reason") or "").strip(),
+                on_screen=str(h.get("on_screen") or "").strip(),
+            )
+        except Exception:
+            continue
+
+        start = val.start_time
+        end = val.end_time
         if end <= start or (duration and start > duration):
             continue
         # Clamp duration to 15s - 90s
@@ -216,16 +282,16 @@ def rank_highlights(
             end = min(start + 30.0, duration or start + 30.0)
 
         cleaned.append({
-            "title": str(h.get("title") or "Viral Highlight").strip(),
+            "title": val.title,
             "start_time": round(start, 2),
             "end_time": round(end, 2),
             "duration": round(end - start, 2),
-            "score": int(h.get("score") or 80),
-            "hook_score": int(h.get("hook_score") or 85),
-            "first_line": str(h.get("first_line") or "").strip(),
-            "hook_sentence": str(h.get("hook_sentence") or h.get("first_line") or "").strip(),
-            "virality_reason": str(h.get("virality_reason") or "").strip(),
-            "on_screen": str(h.get("on_screen") or "").strip(),
+            "score": val.score,
+            "hook_score": val.hook_score,
+            "first_line": val.first_line,
+            "hook_sentence": val.hook_sentence,
+            "virality_reason": val.virality_reason,
+            "on_screen": val.on_screen,
         })
 
     # Sort by score descending

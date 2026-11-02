@@ -7,19 +7,20 @@ from pathlib import Path
 from typing import Any
 
 from config import DOWNLOADS_DIR
+from core.security import resolve_executable, validate_source
 
 
 def probe_media(file_path: str | Path) -> dict[str, Any]:
     """Inspect video file metadata using ffprobe."""
     path = str(file_path)
     cmd = [
-        "ffprobe", "-v", "error",
+        resolve_executable("ffprobe"), "-v", "error",
         "-show_entries", "format=duration,size,bit_rate:stream=width,height,r_frame_rate,codec_name,codec_type",
         "-of", "json",
         path,
     ]
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        proc = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60)
         data = json.loads(proc.stdout)
     except Exception as e:
         raise RuntimeError(f"Failed to probe media '{path}': {e}") from e
@@ -51,6 +52,11 @@ def probe_media(file_path: str | Path) -> dict[str, Any]:
 def download_video(source_url_or_path: str, max_height: int = 1080) -> Path:
     """Download video from YouTube/Web or return existing local path."""
     source = source_url_or_path.strip().strip('"').strip("'")
+
+    # Validate input source against SSRF and unsupported files
+    valid, err = validate_source(source, allow_local=True)
+    if not valid:
+        raise ValueError(f"Invalid video source: {err}")
 
     # Check if it's already a local file path
     local_p = Path(source)
@@ -93,7 +99,7 @@ def extract_audio(video_path: Path, output_audio: Path | None = None) -> Path:
         return output_audio
 
     cmd = [
-        "ffmpeg", "-y", "-loglevel", "error",
+        resolve_executable("ffmpeg"), "-y", "-loglevel", "error",
         "-i", str(video_path),
         "-vn",
         "-acodec", "pcm_s16le",
@@ -101,6 +107,6 @@ def extract_audio(video_path: Path, output_audio: Path | None = None) -> Path:
         "-ac", "1",
         str(output_audio),
     ]
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, timeout=300)
     return output_audio
 

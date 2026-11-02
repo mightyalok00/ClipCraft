@@ -67,8 +67,15 @@ DEFAULT_CONFIG: dict[str, Any] = {
 }
 
 
+_HW_CACHE: dict[str, Any] | None = None
+
+
 def detect_hardware() -> dict[str, Any]:
-    """Detect available compute and hardware acceleration engines."""
+    """Detect available compute and hardware acceleration engines (cached)."""
+    global _HW_CACHE
+    if _HW_CACHE is not None:
+        return _HW_CACHE.copy()
+
     import shutil
     import subprocess
 
@@ -93,9 +100,10 @@ def detect_hardware() -> dict[str, Any]:
 
     # Check FFmpeg encoders
     if hw["ffmpeg_available"]:
+        ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
         try:
             res = subprocess.run(
-                ["ffmpeg", "-hide_banner", "-encoders"],
+                [ffmpeg_bin, "-hide_banner", "-encoders"],
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -109,7 +117,32 @@ def detect_hardware() -> dict[str, Any]:
         except (subprocess.SubprocessError, OSError):
             pass
 
-    return hw
+    _HW_CACHE = hw
+    return hw.copy()
+
+
+def cleanup_old_temp_files(max_age_hours: int = 24) -> int:
+    """Clean up orphan audio and temporary video artifacts older than max_age_hours."""
+    import time
+
+    now = time.time()
+    cutoff = now - (max_age_hours * 3600)
+    removed_count = 0
+
+    scan_dirs = [DOWNLOADS_DIR, OUTPUT_DIR]
+    for d in scan_dirs:
+        if not d.exists():
+            continue
+        for file in d.iterdir():
+            if file.is_file() and file.suffix.lower() in (".wav", ".tmp", ".mp3", ".part"):
+                try:
+                    if file.stat().st_mtime < cutoff:
+                        file.unlink()
+                        removed_count += 1
+                except OSError:
+                    pass
+
+    return removed_count
 
 
 def load_config() -> dict[str, Any]:

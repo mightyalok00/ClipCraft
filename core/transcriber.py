@@ -77,6 +77,8 @@ def transcribe(
         beam_size=5,
         word_timestamps=True,
         condition_on_previous_text=False,
+        vad_filter=True,
+        vad_parameters={"min_silence_duration_ms": 500},
     )
 
     segments_out = []
@@ -84,16 +86,24 @@ def transcribe(
     srt_lines = []
 
     for idx, seg in enumerate(segments_gen, 1):
+        # Suppress common Whisper hallucination artifacts during silence
+        if getattr(seg, "no_speech_prob", 0.0) > 0.8 or not str(seg.text or "").strip():
+            continue
+
         seg_words = []
         for w in getattr(seg, "words", None) or []:
             text = str(w.word or "").strip()
             if not text:
                 continue
+            prob = float(getattr(w, "probability", 1.0) or 0.0)
+            if prob < 0.15:  # Filter out low-confidence hallucinations
+                continue
+
             word_obj = {
                 "word": text,
                 "start": round(float(w.start), 3),
                 "end": round(float(w.end), 3),
-                "p": round(float(getattr(w, "probability", 1.0) or 0.0), 3),
+                "p": round(prob, 3),
             }
             seg_words.append(word_obj)
             all_words.append(word_obj)

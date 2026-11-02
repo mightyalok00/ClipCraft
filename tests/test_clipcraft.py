@@ -1,7 +1,6 @@
 """ClipCraft Automated Test Suite."""
 from __future__ import annotations
 
-# Add project root to path
 import sys
 import tempfile
 import unittest
@@ -13,10 +12,10 @@ if str(ROOT_DIR) not in sys.path:
 
 from config import detect_hardware, load_config  # noqa: E402
 from core.packaging import package_clip_deliverables  # noqa: E402
-from core.ranker import _extract_json, build_prompt_for_category  # noqa: E402
-from core.signals import snap_to_silence  # noqa: E402
+from core.ranker import ClipHighlight, _extract_json, build_prompt_for_category  # noqa: E402
+from core.signals import detect_silences, snap_to_silence  # noqa: E402
 from core.subtitles import WordToken, generate_ass_subtitles, to_ass_time  # noqa: E402
-from core.vision import calculate_crop_box, calculate_stacked_crops  # noqa: E402
+from core.vision import calculate_crop_box, calculate_crop_window, calculate_stacked_crops  # noqa: E402
 
 
 class TestConfig(unittest.TestCase):
@@ -50,6 +49,18 @@ class TestSignals(unittest.TestCase):
         # Test no silence nearby -> returns original
         unchanged = snap_to_silence(5.0, silences, is_start=True, max_shift=0.5)
         self.assertEqual(unchanged, 5.0)
+
+    def test_detect_silences(self):
+        # 10 windows with 0.1s each; window 2-5 are silent (< 0.08)
+        loudness = {
+            "rms": [0.5, 0.5, 0.02, 0.02, 0.02, 0.02, 0.02, 0.5, 0.5, 0.5],
+            "window_sec": 0.1,
+            "duration": 1.0,
+        }
+        silences = detect_silences(loudness, min_silence_sec=0.4, silence_threshold=0.08)
+        self.assertEqual(len(silences), 1)
+        self.assertAlmostEqual(silences[0][0], 0.2, places=1)
+        self.assertAlmostEqual(silences[0][1], 0.7, places=1)
 
 
 class TestSubtitles(unittest.TestCase):
@@ -149,6 +160,13 @@ class TestVisionCrops(unittest.TestCase):
         self.assertGreater(top_crop["w"], 0)
         self.assertGreater(bottom_crop["w"], 0)
 
+    def test_calculate_crop_window(self):
+        # 16:9 1920x1080 -> 9:16 target aspect
+        crop = calculate_crop_window(1920, 1080, target_aspect=(9, 16))
+        self.assertEqual(crop["h"], 1080)
+        self.assertEqual(crop["w"], 608)
+        self.assertEqual(crop["x"], (1920 - 608) // 2)
+
 
 class TestRanker(unittest.TestCase):
     def test_extract_json_markdown(self):
@@ -183,6 +201,26 @@ Hope you like it!"""
             self.assertIn("focus on excitement", prompt)
             self.assertIn("Test transcript", prompt)
             self.assertIn("High energy at 30s", prompt)
+
+    def test_clip_highlight_pydantic_validation(self):
+        # Valid clip
+        h = ClipHighlight(
+            title="Epic Moment",
+            start_time=10.0,
+            end_time=35.0,
+            score=95,
+            hook_score=90,
+            first_line="Watch this",
+            hook_sentence="Watch this right now",
+        )
+        self.assertEqual(h.title, "Epic Moment")
+        self.assertEqual(h.score, 95)
+        self.assertEqual(h.start_time, 10.0)
+
+        # Defaults handling
+        h_def = ClipHighlight(start_time=0.0, end_time=15.0)
+        self.assertEqual(h_def.score, 80)
+        self.assertEqual(h_def.title, "Viral Highlight")
 
 
 class TestPackaging(unittest.TestCase):
