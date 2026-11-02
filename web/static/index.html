@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClipCraft — AI Short-Form Video Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f;
+      --surface: #12141c;
+      --surface-border: #1e2230;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --accent: #f59e0b;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --success: #10b981;
+      --danger: #ef4444;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      height: 70px;
+      border-bottom: 1px solid var(--surface-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      background: rgba(18, 20, 28, 0.7);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .logo-badge {
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover {
+      background: #1a1e2b;
+      border-color: #2e3448;
+    }
+
+    /* Layout Container */
+    .container {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 32px 20px;
+      flex: 1;
+    }
+
+    /* Hero / Creator Card */
+    .creator-card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      margin-bottom: 36px;
+    }
+
+    .form-group {
+      margin-bottom: 22px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #e5e7eb;
+    }
+
+    .input-box {
+      width: 100%;
+      background: #0d0f17;
+      border: 1px solid var(--surface-border);
+      color: #fff;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-box:focus {
+      border-color: var(--primary);
+    }
+
+    /* Chips & Toggles */
+    .pill-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .pill {
+      background: #0d0f17;
+      border: 1px solid var(--surface-border);
+      color: var(--text-muted);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .pill.active {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, #6366f1, #9333ea);
+      color: white;
+      border: none;
+      padding: 16px 24px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(99, 102, 241, 0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 22px rgba(99, 102, 241, 0.5);
+    }
+
+    /* Progress Box */
+    .progress-card {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 36px;
+    }
+    .progress-bar-bg {
+      height: 10px;
+      background: #0d0f17;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 14px 0;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #6366f1, #10b981);
+      transition: width 0.3s ease;
+    }
+    .log-box {
+      background: #090a0f;
+      border: 1px solid #1a1e2b;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #a5b4fc;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+
+    /* Clips Grid */
+    .clips-section-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .clips-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
+    }
+    .clip-card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .video-wrap {
+      background: #000;
+      aspect-ratio: 9/16;
+      max-height: 480px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .clip-body {
+      padding: 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .clip-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .score-badge {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .clip-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .clip-hook {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+    .clip-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .btn-action {
+      flex: 1;
+      padding: 8px 12px;
+      background: #1f2434;
+      border: 1px solid #2e3448;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn-action:hover { background: #2b3248; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius);
+      width: 90%;
+      max-width: 500px;
+      padding: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <span>ClipCraft</span>
+      <span class="logo-badge">Universal AI Engine</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-secondary" onclick="openSettings()">⚙ Settings</button>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Creation Card -->
+    <div class="creator-card">
+      <div class="form-group">
+        <label>Video Source</label>
+        <input type="text" id="sourceInput" class="input-box" placeholder="Paste YouTube URL, video link, or local file path (e.g. C:\videos\sample.mp4)">
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Category (Focus)</label>
+          <div class="pill-group" id="categoryGroup">
+            <div class="pill active" data-val="general">General / Viral</div>
+            <div class="pill" data-val="gaming">Gaming Stream</div>
+            <div class="pill" data-val="podcast">Podcast / Talk</div>
+            <div class="pill" data-val="educational">Tutorial / Tech</div>
+            <div class="pill" data-val="vlog">Vlog / Story</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>9:16 Framing Layout</label>
+          <div class="pill-group" id="layoutGroup">
+            <div class="pill active" data-val="facetrack">Active Speaker</div>
+            <div class="pill" data-val="stacked">Webcam Over Game</div>
+            <div class="pill" data-val="center">Center Crop</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Subtitle Preset</label>
+          <div class="pill-group" id="captionGroup">
+            <div class="pill active" data-val="bold_yellow">Bold Yellow</div>
+            <div class="pill" data-val="cyber_green">Cyber Neon</div>
+            <div class="pill" data-val="clean_minimal">Clean Box</div>
+            <div class="pill" data-val="off">No Captions</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Number of Shorts to Extract: <span id="numClipsLabel">3</span></label>
+          <input type="range" id="numClipsInput" min="1" max="10" value="3" style="width: 100%; margin-top: 14px;" oninput="document.getElementById('numClipsLabel').innerText = this.value">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Editorial & Layout Prompt (Optional)</label>
+        <input type="text" id="promptInput" class="input-box" placeholder="e.g. 'focus on funniest reactions, cut silences, bold captions'">
+      </div>
+
+      <button class="btn-primary" id="startBtn" onclick="startGeneration()">⚡ Generate Viral Shorts</button>
+    </div>
+
+    <!-- Live Progress -->
+    <div class="progress-card" id="progressCard">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span id="stageLabel" style="font-weight: 700; color: #a5b4fc;">Processing...</span>
+        <span id="percentLabel" style="font-weight: 700;">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="log-box" id="logBox">Initializing worker...</div>
+    </div>
+
+    <!-- Finished Clips Gallery -->
+    <h3 class="clips-section-title" id="galleryTitle" style="display: none;">Your Generated Shorts</h3>
+    <div class="clips-grid" id="clipsGrid"></div>
+
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal" onclick="if(event.target === this) closeSettings()">
+    <div class="modal-box">
+      <h3 style="font-size: 18px; margin-bottom: 16px;">AI Engine Settings</h3>
+      <div class="form-group">
+        <label>LLM Provider</label>
+        <select id="cfgProvider" class="input-box">
+          <option value="gemini">Google Gemini (Recommended)</option>
+          <option value="groq">Groq (Llama-3.3 Fast)</option>
+          <option value="openai">OpenAI (GPT-4o-mini)</option>
+          <option value="ollama">Local Ollama (100% Offline)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Gemini API Key</label>
+        <input type="password" id="cfgGeminiKey" class="input-box" placeholder="AIzaSy...">
+      </div>
+      <div class="form-group">
+        <label>Groq API Key</label>
+        <input type="password" id="cfgGroqKey" class="input-box" placeholder="gsk_...">
+      </div>
+      <div class="form-group">
+        <label>OpenAI API Key</label>
+        <input type="password" id="cfgOpenAIKey" class="input-box" placeholder="sk-...">
+      </div>
+      <button class="btn-primary" onclick="saveSettings()">Save Configuration</button>
+    </div>
+  </div>
+
+  <script>
+    // Pill selection logic
+    function setupPills(containerId) {
+      const container = document.getElementById(containerId);
+      container.addEventListener('click', (e) => {
+        const pill = e.target.closest('.pill');
+        if (!pill) return;
+        container.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+      });
+    }
+    setupPills('categoryGroup');
+    setupPills('layoutGroup');
+    setupPills('captionGroup');
+
+    function getSelectedPill(containerId) {
+      const active = document.querySelector(`#${containerId} .pill.active`);
+      return active ? active.dataset.val : '';
+    }
+
+    function openSettings() {
+      fetch('/api/config').then(r => r.json()).then(cfg => {
+        document.getElementById('cfgProvider').value = cfg.llm_provider || 'gemini';
+        document.getElementById('cfgGeminiKey').value = cfg.gemini_api_key || '';
+        document.getElementById('cfgGroqKey').value = cfg.groq_api_key || '';
+        document.getElementById('cfgOpenAIKey').value = cfg.openai_api_key || '';
+        document.getElementById('settingsModal').style.display = 'flex';
+      });
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').style.display = 'none';
+    }
+
+    function saveSettings() {
+      const body = {
+        llm_provider: document.getElementById('cfgProvider').value,
+        gemini_api_key: document.getElementById('cfgGeminiKey').value,
+        groq_api_key: document.getElementById('cfgGroqKey').value,
+        openai_api_key: document.getElementById('cfgOpenAIKey').value,
+      };
+      fetch('/api/config', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+      }).then(() => {
+        closeSettings();
+        alert('Settings saved!');
+      });
+    }
+
+    async function startGeneration() {
+      const source = document.getElementById('sourceInput').value.trim();
+      if (!source) {
+        alert('Please enter a YouTube link or local video path!');
+        return;
+      }
+
+      const body = {
+        source: source,
+        num_clips: parseInt(document.getElementById('numClipsInput').value),
+        content_type: getSelectedPill('categoryGroup'),
+        layout: getSelectedPill('layoutGroup'),
+        captions: getSelectedPill('captionGroup'),
+        prompt: document.getElementById('promptInput').value.trim(),
+      };
+
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('progressCard').style.display = 'block';
+
+      try {
+        const res = await fetch('/api/jobs', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        listenToJob(data.job_id);
+      } catch (err) {
+        alert('Error starting job: ' + err);
+        document.getElementById('startBtn').disabled = false;
+      }
+    }
+
+    function listenToJob(jobId) {
+      const evtSource = new EventSource(`/api/jobs/${jobId}/stream`);
+      const logBox = document.getElementById('logBox');
+
+      evtSource.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        const frac = Math.round((data.fraction || 0) * 100);
+        document.getElementById('progressBar').style.width = frac + '%';
+        document.getElementById('percentLabel').innerText = frac + '%';
+        document.getElementById('stageLabel').innerText = `[${data.stage.toUpperCase()}] ${data.message}`;
+
+        logBox.innerHTML += `<div>${data.message}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+
+        if (data.stage === 'completed') {
+          evtSource.close();
+          document.getElementById('startBtn').disabled = false;
+          renderGallery(data.manifest);
+        } else if (data.stage === 'error') {
+          evtSource.close();
+          document.getElementById('startBtn').disabled = false;
+          alert('Job encountered error: ' + data.message);
+        }
+      };
+    }
+
+    function renderGallery(manifest) {
+      const grid = document.getElementById('clipsGrid');
+      const title = document.getElementById('galleryTitle');
+      title.style.display = 'block';
+      grid.innerHTML = '';
+
+      const jobId = manifest.job_id;
+      manifest.highlights.forEach((h, idx) => {
+        const filename = h.clip_url.split(/[\\/]/).pop();
+        const videoSrc = `/api/clips/job_${jobId}/${filename}`;
+
+        const card = document.createElement('div');
+        card.className = 'clip-card';
+        card.innerHTML = `
+          <div class="video-wrap">
+            <video src="${videoSrc}" controls preload="metadata"></video>
+          </div>
+          <div class="clip-body">
+            <div>
+              <div class="clip-header">
+                <span style="font-size: 13px; font-weight: 700; color: #a5b4fc;">Short #${idx + 1}</span>
+                <span class="score-badge">★ ${h.score}/100</span>
+              </div>
+              <div class="clip-title">${h.title}</div>
+              <div class="clip-hook">${h.hook_sentence || h.first_line || ''}</div>
+            </div>
+            <div class="clip-actions">
+              <a href="${videoSrc}" download class="btn-action">Download MP4</a>
+              <button class="btn-action" onclick="copySEO(${idx})">Copy SEO</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+      window.lastHighlights = manifest.highlights;
+    }
+
+    function copySEO(idx) {
+      const h = window.lastHighlights[idx];
+      if (!h || !h.seo) return;
+      const text = `${h.seo.youtube_title}\n\n${h.seo.youtube_description}`;
+      navigator.clipboard.writeText(text);
+      alert('YouTube title & description copied to clipboard!');
+    }
+  </script>
+</body>
+</html>

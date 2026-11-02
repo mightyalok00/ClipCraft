@@ -1,0 +1,31 @@
+# Python bytecode & environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Media & Render Artifacts
+output/
+shorts/
+downloads/
+*.mp4
+*.mkv
+*.webm
+*.mov
+*.wav
+*.mp3
+*.aac
+*.srt
+*.words.json
+*.tmp
+*.log
+
+# Caches
+.cache/
+.pytest_cache/
+
+# User Configuration & Secrets
+.env
+config.local.json
