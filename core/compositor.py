@@ -10,7 +10,7 @@ from typing import Any
 from config import FONTS_DIR
 
 from .subtitles import generate_ass_subtitles
-from .vision import calculate_crop_window, detect_faces
+from .vision import calculate_crop_window, detect_faces, sample_video_frame
 
 
 def detect_hw_encoder() -> tuple[str, list[str]]:
@@ -44,15 +44,10 @@ def render_clip(
     out_w, out_h = target_res
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 1. Determine video dimensions and sample a frame for face detection
-    import cv2
-    cap = cv2.VideoCapture(str(source_path))
-    cap.set(cv2.CAP_PROP_POS_MSEC, (start_time + 1.0) * 1000.0)
-    ret, sample_frame = cap.read()
-    cap.release()
-
+    # 1. Sample a frame for face detection and dimensions
+    sample_frame = sample_video_frame(source_path, start_time + 1.0)
     face = None
-    if ret and sample_frame is not None:
+    if sample_frame is not None:
         src_h, src_w = sample_frame.shape[:2]
         faces = detect_faces(sample_frame)
         if faces:

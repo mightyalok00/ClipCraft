@@ -1,6 +1,8 @@
 """Computer Vision, Face Detection, and Intelligent 9:16 Re-framing."""
 from __future__ import annotations
 
+from pathlib import Path
+
 import cv2
 import numpy as np
 from config import MODELS_DIR
@@ -36,6 +38,18 @@ def get_face_detector():
     cascade_path = cascade_dir + "haarcascade_frontalface_default.xml"
     _detector = cv2.CascadeClassifier(cascade_path)
     return _detector
+
+
+def sample_video_frame(video_path: Path | str, timestamp_sec: float) -> np.ndarray | None:
+    """Extract a single BGR frame from a video file at the given timestamp."""
+    try:
+        cap = cv2.VideoCapture(str(video_path))
+        cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, timestamp_sec) * 1000.0)
+        ret, frame = cap.read()
+        cap.release()
+        return frame if ret and frame is not None else None
+    except (cv2.error, OSError):
+        return None
 
 
 def detect_faces(frame: np.ndarray) -> list[dict[str, float]]:
