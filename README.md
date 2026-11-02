@@ -62,7 +62,8 @@ ClipCraft tunes its virality criteria prompts based on the content category:
 ### 2. Installation
 Clone the repository and install the dependencies:
 ```powershell
-cd E:\ClipCraft
+git clone https://github.com/mightyalok00/ClipCraft.git
+cd ClipCraft
 .\run.ps1 install
 ```
 Or manually with pip:
