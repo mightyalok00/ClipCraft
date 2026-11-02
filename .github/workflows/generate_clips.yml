@@ -18,6 +18,15 @@ on:
           - 'podcast'
           - 'education'
           - 'vlog'
+      layout_mode:
+        description: 'Video Layout Mode'
+        required: true
+        type: choice
+        default: 'facetrack'
+        options:
+          - 'facetrack'
+          - 'stacked'
+          - 'blur_padding'
       num_clips:
         description: 'Number of clips to generate'
         required: true
@@ -46,10 +55,16 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
+      - name: Install System Libraries (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgl1-mesa-glx libglib2.0-0
+
       - name: Install FFmpeg
         uses: FedericoCarboni/setup-ffmpeg@v3
         with:
           ffmpeg-version: 'release'
+          github-token: ${{ github.token }}
 
       - name: Install Python Dependencies
         run: |
@@ -64,6 +79,7 @@ jobs:
         run: |
           python main.py clip "${{ github.event.inputs.source_url }}" \
             -c "${{ github.event.inputs.content_category }}" \
+            -l "${{ github.event.inputs.layout_mode }}" \
             -n ${{ github.event.inputs.num_clips }} \
             -s "${{ github.event.inputs.captions_style }}"
 
@@ -73,4 +89,3 @@ jobs:
           name: clipcraft-deliverables
           path: output/shorts/
           if-no-files-found: ignore
-

@@ -37,10 +37,17 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
 
+      - name: Install System Libraries (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgl1-mesa-glx libglib2.0-0
+
       - name: Install FFmpeg
         uses: FedericoCarboni/setup-ffmpeg@v3
         with:
           ffmpeg-version: 'release'
+          github-token: ${{ github.token }}
 
       - name: Install Dependencies
         run: |
@@ -57,4 +64,3 @@ jobs:
         if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'unit_tests' || github.event_name != 'workflow_dispatch' }}
         run: |
           python -m unittest discover -s tests -p "test_*.py" -v
-

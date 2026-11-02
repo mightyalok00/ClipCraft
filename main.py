@@ -185,9 +185,9 @@ def main():
     )
     p_clip.add_argument(
         "-l", "--layout",
-        choices=["facetrack", "stacked"],
+        choices=["facetrack", "stacked", "blur_padding"],
         default="facetrack",
-        help="Video layout: facetrack (active speaker crop) or stacked (facecam + content) (default: facetrack)",
+        help="Video layout: facetrack (active speaker crop), stacked (facecam + content), or blur_padding (default: facetrack)",
     )
     p_clip.add_argument(
         "-s", "--captions",
