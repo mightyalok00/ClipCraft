@@ -81,7 +81,7 @@ class JobCreateRequest(BaseModel):
     num_clips: int = Field(3, ge=1, le=20, description="Clips to extract (1-20)")
     content_type: str = Field("general", pattern=r"^(general|gaming|podcast|educational|education|vlog)$")
     layout: str = Field("facetrack", pattern=r"^(facetrack|center|stacked|blur_padding)$")
-    captions: str = Field("bold_yellow", pattern=r"^(bold_yellow|cyber_green|clean_minimal)$")
+    captions: str = Field("bold_yellow", pattern=r"^(bold_yellow|cyber_green|clean_minimal|off|none)$")
     prompt: str = Field("", max_length=1000, description="Custom prompt guidance")
 
 

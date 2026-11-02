@@ -359,6 +359,7 @@
             <div class="pill active" data-val="facetrack">Active Speaker</div>
             <div class="pill" data-val="stacked">Webcam Over Game</div>
             <div class="pill" data-val="center">Center Crop</div>
+            <div class="pill" data-val="blur_padding">Blur Padding</div>
           </div>
         </div>
       </div>
@@ -512,10 +513,18 @@
           body: JSON.stringify(body)
         });
         const data = await res.json();
+        if (!res.ok) {
+          const detail = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail || data);
+          alert('Error starting job: ' + detail);
+          document.getElementById('startBtn').disabled = false;
+          document.getElementById('progressCard').style.display = 'none';
+          return;
+        }
         listenToJob(data.job_id);
       } catch (err) {
         alert('Error starting job: ' + err);
         document.getElementById('startBtn').disabled = false;
+        document.getElementById('progressCard').style.display = 'none';
       }
     }
 

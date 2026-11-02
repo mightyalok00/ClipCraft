@@ -15,6 +15,7 @@ from .compositor import render_clip
 from .ingestion import download_video, extract_audio, probe_media
 from .packaging import package_clip
 from .ranker import rank_highlights
+from .security import sanitize_filename
 from .signals import compute_loudness_curve, detect_silences, find_audio_peaks, snap_to_silence
 from .transcriber import transcribe
 
@@ -125,7 +126,8 @@ def process_video(
             frac = 0.70 + (i / len(highlights)) * 0.28
             notify("rendering", frac, f"Compositing Short #{i}/{len(highlights)}: '{h['title']}'...")
 
-            out_filename = f"short_{i:02d}_{h['title'].lower().replace(' ', '_')[:30]}.mp4"
+            slug = sanitize_filename(h["title"].lower().replace(" ", "_"))[:30].strip("._-")
+            out_filename = f"short_{i:02d}_{slug or 'clip'}.mp4"
             out_path = job_out_dir / out_filename
 
             render_clip(

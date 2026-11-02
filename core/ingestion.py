@@ -74,6 +74,7 @@ def download_video(source_url_or_path: str, max_height: int = 1080) -> Path:
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
+        "noprogress": True,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore[arg-type]
