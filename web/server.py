@@ -193,7 +193,7 @@ async def create_job(req: JobCreateRequest, bg: BackgroundTasks):
         "fraction": 0.0,
         "message": "Initializing job...",
         "created_at": time.time(),
-        "request": req.model_dump() if hasattr(req, "model_dump") else req.dict(),
+        "request": req.model_dump(),
     }
     threading.Thread(target=_background_worker, args=(job_id, req, cancel_event), daemon=True).start()
     return {"job_id": job_id, "status": "running"}
@@ -290,7 +290,7 @@ async def get_config():
 @app.post("/api/config")
 async def update_config(req: ConfigUpdateRequest):
     """Safely update configuration values."""
-    raw_updates = req.model_dump(exclude_unset=True) if hasattr(req, "model_dump") else req.dict(exclude_unset=True)
+    raw_updates = req.model_dump(exclude_unset=True)
     clean_updates = {}
     for k, v in raw_updates.items():
         if v is not None and isinstance(v, str):
