@@ -71,23 +71,30 @@ ClipCraft tunes its virality criteria prompts based on the content category:
 ## 🚀 Quickstart Guide
 
 ### 1. Prerequisites
+
 - **Python 3.10+**
 - **FFmpeg 6.0+** (Compiled with `libass` and hardware encoders on your system `PATH`)
 
 ### 2. Installation
+
 Clone the repository and install the dependencies:
+
 ```powershell
 git clone https://github.com/mightyalok00/ClipCraft.git
 cd ClipCraft
 .\run.ps1 install
 ```
+
 Or manually with pip:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 3. Configure Your LLM Provider
+
 ClipCraft supports four LLM engines. Choose your favorite in `config.local.json` or through the CLI:
+
 ```powershell
 # Option A: Google Gemini (Recommended for speed & accuracy)
 .\run.ps1 config --set llm_provider=gemini gemini_api_key="YOUR_GEMINI_KEY"
@@ -107,18 +114,24 @@ ClipCraft supports four LLM engines. Choose your favorite in `config.local.json`
 ## 💻 Usage
 
 ### A. Modern Browser Dashboard (Recommended)
+
 Launch the responsive Dark Tech web interface:
+
 ```powershell
 .\run.ps1 web
 ```
+
 Then open [http://localhost:8000](http://localhost:8000) in your browser.
+
 - Real-time Server-Sent Events (SSE) progress bar.
 - Interactive layout toggles (Face Tracking vs Stacked Split).
 - Subtitle style selector with live preview.
 - In-browser video playback and one-click copy for platform captions.
 
 ### B. Command-Line Interface (CLI)
+
 Generate clips directly from your terminal:
+
 ```powershell
 # Clip a YouTube video with podcast tuning and bold yellow captions
 python main.py clip "https://www.youtube.com/watch?v=EXAMPLE" -c podcast -n 3 -s bold_yellow
@@ -131,6 +144,7 @@ python main.py clip "https://youtu.be/..." -p "find the funniest moment when the
 ```
 
 ### C. Available CLI Arguments
+
 | Flag | Short | Description | Choices / Default |
 | :--- | :--- | :--- | :--- |
 | `source` | | YouTube/Twitch URL or local `.mp4`/`.mkv` path | Required |
@@ -143,6 +157,7 @@ python main.py clip "https://youtu.be/..." -p "find the funniest moment when the
 | `--open` | | Automatically open folder in Windows Explorer | Flag |
 
 ### D. Trigger Workflows on GitHub (One-Click "Run Workflow")
+
 You can run automated test suites or trigger cloud clipping jobs directly from the GitHub UI:
 
 1. **Run CI & Test Suite Button:**
@@ -180,6 +195,7 @@ ClipCraft bundles studio typography embedded directly into the repository:
 ## ⚙️ Hardware Acceleration
 
 ClipCraft automatically inspects your hardware on boot:
+
 - **NVIDIA GPU**: Automatically invokes `-c:v h264_nvenc -preset p4 -cq 23` for lightning-fast GPU encodes.
 - **Intel CPU / Arc**: Leverages `-c:v h264_qsv` if available.
 - **CPU Fallback**: Gracefully falls back to high-quality multi-threaded `libx264`.
@@ -190,6 +206,7 @@ ClipCraft automatically inspects your hardware on boot:
 ## 🧪 Automated Testing
 
 Run the test suite to verify signal math, crop calculations, ASS subtitle formatting, and JSON parsers:
+
 ```powershell
 .\run.ps1 test
 ```
@@ -198,7 +215,7 @@ Run the test suite to verify signal math, crop calculations, ASS subtitle format
 
 ## 📁 Repository Structure
 
-```
+```text
 E:\ClipCraft\
 ├── assets\
 │   ├── emoji\              # High-res Twemoji PNGs for burned-in reaction icons
@@ -231,7 +248,7 @@ E:\ClipCraft\
 ## 📄 License
 
 ClipCraft is released under the **MIT License**. Open-source assets included:
+
 - OpenCV YuNet face detector: MIT License.
 - Fonts (Montserrat, Anton, Poppins): SIL Open Font License (OFL).
 - Emoji icons: Twitter Twemoji (CC-BY 4.0).
-
