@@ -6,11 +6,30 @@ import os
 from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
-
 # Base paths
 ROOT_DIR = Path(__file__).resolve().parent
-load_dotenv(ROOT_DIR / ".env")
+
+
+def _load_env_file(env_path: Path) -> None:
+    """Load key-value pairs from a .env file into os.environ without requiring external packages."""
+    if not env_path.exists():
+        return
+    try:
+        with open(env_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip()
+                v = v.strip().strip("'\"")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except OSError:
+        pass
+
+
+_load_env_file(ROOT_DIR / ".env")
 
 OUTPUT_DIR = Path(os.environ.get("CLIPCRAFT_OUTPUT_DIR", ROOT_DIR / "output"))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
