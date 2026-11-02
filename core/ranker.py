@@ -94,15 +94,16 @@ def get_llm_client(config: dict[str, Any], provider_override: str | None = None)
         if not key:
             raise ValueError("GEMINI_API_KEY is not configured.")
         client = genai.Client(api_key=key)
+        models: Any = client.models
         model_name = config.get("gemini_model", "gemini-2.5-flash")
 
         def _call_gemini(prompt: str) -> str:
-            res = client.models.generate_content(
+            res = models.generate_content(
                 model=model_name,
                 contents=prompt,
                 config={"response_mime_type": "application/json"}
             )
-            return res.text or ""
+            return getattr(res, "text", "") or ""
         return _call_gemini
 
     elif provider in ("groq", "openai", "ollama"):
