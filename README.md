@@ -150,7 +150,7 @@ python main.py clip "https://youtu.be/..." -p "find the funniest moment when the
 | `source` | | YouTube/Twitch URL or local `.mp4`/`.mkv` path | Required |
 | `--num-clips` | `-n` | Number of viral clips to produce | `1-10` (Default: `3`) |
 | `--category` | `-c` | Content virality archetype | `general`, `gaming`, `podcast`, `education`, `vlog` |
-| `--layout` | `-l` | Visual layout mode | `facetrack` (9:16), `stacked` (Split-screen) |
+| `--layout` | `-l` | Visual layout mode | `facetrack` (9:16), `stacked` (Split-screen), `blur_padding` (Blurred Background) |
 | `--captions` | `-s` | Subtitle animation style | `bold_yellow`, `cyber_green`, `clean_minimal` |
 | `--prompt` | `-p` | Custom guidance prompt to steer the LLM | Custom text string |
 | `--out-dir` | `-o` | Custom output directory | Defaults to `output/shorts/` |
@@ -205,10 +205,16 @@ ClipCraft automatically inspects your hardware on boot:
 
 ## 🧪 Automated Testing
 
-Run the test suite to verify signal math, crop calculations, ASS subtitle formatting, and JSON parsers:
+ClipCraft includes an extensive test suite covering unit math, API security, input validation, and edge cases (37 tests, 100% passing):
 
 ```powershell
 .\run.ps1 test
+```
+
+Or run pytest directly:
+
+```powershell
+pytest tests/ -v
 ```
 
 ---
@@ -232,11 +238,14 @@ E:\ClipCraft\
 │   ├── packaging.py        # Multi-platform SEO metadata (Shorts, Reels, TikTok)
 │   └── pipeline.py         # End-to-end master coordinator & progress events
 ├── web\
-│   ├── server.py           # FastAPI REST & SSE streaming server
+│   ├── server.py           # FastAPI REST & SSE streaming server with security headers
 │   └── static\
 │       └── index.html      # Responsive Dark Tech single-page dashboard
 ├── tests\
-│   └── test_clipcraft.py   # Unit & regression test suite
+│   ├── test_clipcraft.py   # Signal, subtitle, ranker, and vision tests
+│   ├── test_api.py         # REST endpoints, SSE, and cancellation tests
+│   ├── test_security.py    # SSRF, path traversal, and secret masking
+│   └── test_edge_cases.py  # Aspect ratio, unicode, and empty audio edge cases
 ├── config.py               # Hardware detection & settings manager
 ├── main.py                 # Unified CLI entry point
 ├── run.ps1                 # Windows PowerShell task runner

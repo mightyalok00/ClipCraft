@@ -13,6 +13,10 @@ import sys
 import time
 from pathlib import Path
 
+ROOT_DIR = Path(__file__).resolve().parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 # Fix Windows console UTF-8 output
 if sys.platform == "win32":
     if hasattr(sys.stdout, "reconfigure"):
@@ -20,12 +24,12 @@ if sys.platform == "win32":
     if hasattr(sys.stderr, "reconfigure"):
         sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
-from config import (
+from config import (  # noqa: E402
     detect_hardware,
     load_config,
     save_config,
 )
-from core.pipeline import process_video
+from core.pipeline import process_video  # noqa: E402
 
 
 def print_banner():
