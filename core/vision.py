@@ -3,9 +3,6 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any
-
 from config import MODELS_DIR
 
 YUNET_PATH = MODELS_DIR / "face_detection_yunet_2023mar.onnx"
@@ -30,16 +27,18 @@ def get_face_detector():
                 top_k=5000,
             )
             return _detector
-        except Exception as e:
+        except (cv2.error, RuntimeError, OSError) as e:
             print(f"[vision] Failed to create YuNet detector ({e}), falling back to Haar")
 
     # Fallback to Haar Cascade
-    cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    cv2_data = getattr(cv2, "data", None)
+    cascade_dir = getattr(cv2_data, "haarcascades", "") if cv2_data else ""
+    cascade_path = cascade_dir + "haarcascade_frontalface_default.xml"
     _detector = cv2.CascadeClassifier(cascade_path)
     return _detector
 
 
-def detect_faces(frame: np.ndarray) -> List[Dict[str, float]]:
+def detect_faces(frame: np.ndarray) -> list[dict[str, float]]:
     """Detect all faces in a BGR frame: [{x, y, w, h, conf}]."""
     detector = get_face_detector()
     h, w = frame.shape[:2]
@@ -76,19 +75,19 @@ def detect_faces(frame: np.ndarray) -> List[Dict[str, float]]:
 def calculate_crop_window(
     src_w: int,
     src_h: int,
-    target_aspect: Tuple[int, int] = (9, 16),
-    face: Optional[Dict[str, float]] = None,
-) -> Dict[str, int]:
+    target_aspect: tuple[int, int] = (9, 16),
+    face: dict[str, float] | None = None,
+) -> dict[str, int]:
     """Calculate the 9:16 bounding box inside a 16:9 source frame."""
     target_ratio = target_aspect[0] / target_aspect[1]
-    
+
     # Maximum height we can take
     crop_h = src_h
-    crop_w = int(round(crop_h * target_ratio))
+    crop_w = round(crop_h * target_ratio)
 
     if crop_w > src_w:
         crop_w = src_w
-        crop_h = int(round(crop_w / target_ratio))
+        crop_h = round(crop_w / target_ratio)
 
     # Center crop default
     center_x = (src_w - crop_w) // 2
@@ -112,19 +111,19 @@ def calculate_crop_window(
 def calculate_crop_box(
     frame_width: int,
     frame_height: int,
-    face_center_x: Optional[float] = None,
-    face_center_y: Optional[float] = None,
+    face_center_x: float | None = None,
+    face_center_y: float | None = None,
     target_aspect: float = 9 / 16,
-) -> Tuple[int, int, int, int]:
+) -> tuple[int, int, int, int]:
     """Calculate (x, y, w, h) for reframing 16:9 into vertical 9:16."""
     crop_h = frame_height
-    crop_w = int(round(crop_h * target_aspect))
+    crop_w = round(crop_h * target_aspect)
     if crop_w % 2 != 0:
         crop_w += 1
 
     if crop_w > frame_width:
         crop_w = frame_width
-        crop_h = int(round(crop_w / target_aspect))
+        crop_h = round(crop_w / target_aspect)
         if crop_h % 2 != 0:
             crop_h += 1
 
@@ -141,8 +140,8 @@ def calculate_crop_box(
 def calculate_stacked_crops(
     frame_width: int,
     frame_height: int,
-    face_bbox: Optional[Tuple[int, int, int, int]] = None,
-) -> Tuple[Dict[str, int], Dict[str, int]]:
+    face_bbox: tuple[int, int, int, int] | None = None,
+) -> tuple[dict[str, int], dict[str, int]]:
     """Calculate crops for stacked layout (top: facecam/speaker, bottom: gameplay/screen)."""
     # Top box: 1:1 or 9:8 box around speaker face
     if face_bbox:

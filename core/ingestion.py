@@ -2,17 +2,14 @@
 from __future__ import annotations
 
 import json
-import os
-import re
-import shutil
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
 
 from config import DOWNLOADS_DIR
 
 
-def probe_media(file_path: str | Path) -> Dict[str, Any]:
+def probe_media(file_path: str | Path) -> dict[str, Any]:
     """Inspect video file metadata using ffprobe."""
     path = str(file_path)
     cmd = [
@@ -54,7 +51,7 @@ def probe_media(file_path: str | Path) -> Dict[str, Any]:
 def download_video(source_url_or_path: str, max_height: int = 1080) -> Path:
     """Download video from YouTube/Web or return existing local path."""
     source = source_url_or_path.strip().strip('"').strip("'")
-    
+
     # Check if it's already a local file path
     local_p = Path(source)
     if local_p.exists() and local_p.is_file():
@@ -64,7 +61,7 @@ def download_video(source_url_or_path: str, max_height: int = 1080) -> Path:
     import yt_dlp  # type: ignore
 
     out_tmpl = str(DOWNLOADS_DIR / "%(id)s.%(ext)s")
-    ydl_opts = {
+    ydl_opts: Any = {
         "format": f"bestvideo[height<={max_height}]+bestaudio/best[height<={max_height}]/best",
         "outtmpl": out_tmpl,
         "merge_output_format": "mp4",
@@ -73,7 +70,7 @@ def download_video(source_url_or_path: str, max_height: int = 1080) -> Path:
         "no_warnings": True,
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore[arg-type]
         info = ydl.extract_info(source, download=True)
         target_path = ydl.prepare_filename(info)
         # Ensure mp4 extension if merged
@@ -87,7 +84,7 @@ def download_video(source_url_or_path: str, max_height: int = 1080) -> Path:
     raise FileNotFoundError(f"Could not download or find media for '{source}'")
 
 
-def extract_audio(video_path: Path, output_audio: Optional[Path] = None) -> Path:
+def extract_audio(video_path: Path, output_audio: Path | None = None) -> Path:
     """Extract a 16kHz mono 16-bit WAV audio track for transcription and signal analysis."""
     if output_audio is None:
         output_audio = video_path.with_suffix(".16k.wav")
@@ -106,3 +103,4 @@ def extract_audio(video_path: Path, output_audio: Optional[Path] = None) -> Path
     ]
     subprocess.run(cmd, check=True)
     return output_audio
+

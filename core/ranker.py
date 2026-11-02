@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
-from typing import Dict, List, Any, Optional, Callable
+from typing import Any
+
 from config import load_config
 
 # Criteria prompts tuned per content category
@@ -66,7 +68,7 @@ Transcript:
 """
 
 
-def get_llm_client(config: Dict[str, Any]):
+def get_llm_client(config: dict[str, Any]):
     """Instantiate the active LLM client based on configuration."""
     provider = config.get("llm_provider", "gemini").lower()
 
@@ -159,12 +161,12 @@ def build_prompt_for_category(
 
 
 def rank_highlights(
-    transcript: Dict[str, Any],
+    transcript: dict[str, Any],
     num_clips: int = 5,
     content_type: str = "general",
     prompt_override: str = "",
-    config: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Rank transcript segments to extract top viral highlights."""
     conf = config or load_config()
     call_llm = get_llm_client(conf)
@@ -196,11 +198,8 @@ def rank_highlights(
     # Parse JSON
     try:
         data = _extract_json(raw_response)
-        if isinstance(data, list):
-            highlights = data
-        else:
-            highlights = data.get("highlights", [])
-    except Exception as e:
+        highlights = data if isinstance(data, list) else data.get("highlights", [])
+    except (json.JSONDecodeError, ValueError, KeyError, TypeError) as e:
         print(f"[ranker] Failed parsing LLM response: {e}\nRaw was:\n{raw_response[:500]}")
         return []
 

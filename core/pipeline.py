@@ -3,16 +3,18 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Callable
+from typing import Any
 
 from config import SHORTS_DIR, load_config
-from .ingestion import download_video, extract_audio, probe_media
-from .transcriber import transcribe
-from .signals import compute_loudness_curve, find_audio_peaks
-from .ranker import rank_highlights
+
 from .compositor import render_clip
+from .ingestion import download_video, extract_audio, probe_media
 from .packaging import package_clip
+from .ranker import rank_highlights
+from .signals import compute_loudness_curve, find_audio_peaks
+from .transcriber import transcribe
 
 
 def process_video(
@@ -22,9 +24,10 @@ def process_video(
     layout: str = "facetrack",
     captions: str = "bold_yellow",
     prompt: str = "",
-    config: Optional[Dict[str, Any]] = None,
-    progress_callback: Optional[Callable[[str, float, str], None]] = None,
-) -> Dict[str, Any]:
+    output_dir: Path | None = None,
+    config: dict[str, Any] | None = None,
+    progress_callback: Callable[[str, float, str], None] | None = None,
+) -> dict[str, Any]:
     """Run end-to-end AI clipping pipeline with live progress updates."""
     def notify(stage: str, frac: float, msg: str):
         if progress_callback:
@@ -88,7 +91,7 @@ def process_video(
     # 6. Rendering & Packaging
     rendered_shorts = []
     job_id = int(time.time())
-    job_out_dir = SHORTS_DIR / f"job_{job_id}"
+    job_out_dir = output_dir or (SHORTS_DIR / f"job_{job_id}")
     job_out_dir.mkdir(parents=True, exist_ok=True)
 
     words = transcript.get("words", [])
@@ -96,7 +99,7 @@ def process_video(
     for i, h in enumerate(highlights, 1):
         frac = 0.70 + (i / len(highlights)) * 0.28
         notify("rendering", frac, f"Compositing Short #{i}/{len(highlights)}: '{h['title']}'...")
-        
+
         out_filename = f"short_{i:02d}_{h['title'].lower().replace(' ', '_')[:30]}.mp4"
         out_path = job_out_dir / out_filename
 
@@ -130,3 +133,4 @@ def process_video(
     (job_out_dir / "job.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     return manifest
+

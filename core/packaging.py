@@ -1,14 +1,13 @@
 """Multi-Platform SEO, Metadata, and Viral Packaging Generator."""
 from __future__ import annotations
 
-import re
-from typing import Dict, List, Any
+from typing import Any
 
 
 def package_clip(
-    highlight: Dict[str, Any],
+    highlight: dict[str, Any],
     content_type: str = "general",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generate platform-specific titles, captions, and hashtags."""
     title = highlight.get("title", "Must Watch")
     hook = highlight.get("hook_sentence") or highlight.get("hook") or highlight.get("first_line") or title
@@ -54,7 +53,7 @@ def package_clip(
     }
 
 
-def package_clip_deliverables(clip: Dict[str, Any]) -> Dict[str, Any]:
+def package_clip_deliverables(clip: dict[str, Any]) -> dict[str, Any]:
     """Convenience packager creating standardized schema for deliverable bundles."""
     content_type = clip.get("category", "general")
     pkg = package_clip(clip, content_type=content_type)

@@ -1,24 +1,22 @@
 """ClipCraft Automated Test Suite."""
 from __future__ import annotations
 
-import json
-import math
+# Add project root to path
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-# Add project root to path
-import sys
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from config import load_config, save_config, detect_hardware
-from core.signals import compute_loudness_envelope, find_silence_ranges, snap_to_silence
-from core.subtitles import generate_ass_subtitles, to_ass_time, WordToken
-from core.vision import calculate_crop_box, calculate_stacked_crops
-from core.ranker import _extract_json, build_prompt_for_category
-from core.packaging import package_clip_deliverables
+from config import detect_hardware, load_config  # noqa: E402
+from core.packaging import package_clip_deliverables  # noqa: E402
+from core.ranker import _extract_json, build_prompt_for_category  # noqa: E402
+from core.signals import snap_to_silence  # noqa: E402
+from core.subtitles import WordToken, generate_ass_subtitles, to_ass_time  # noqa: E402
+from core.vision import calculate_crop_box, calculate_stacked_crops  # noqa: E402
 
 
 class TestConfig(unittest.TestCase):
@@ -40,7 +38,7 @@ class TestSignals(unittest.TestCase):
     def test_silence_snapping(self):
         # Silence from 10.0 to 11.0, 20.0 to 21.0
         silences = [(10.0, 11.0), (20.0, 21.0)]
-        
+
         # Test start snap near 10.3 -> snaps to 10.5
         snapped_start = snap_to_silence(10.3, silences, is_start=True, max_shift=1.0)
         self.assertAlmostEqual(snapped_start, 10.5, places=2)
@@ -119,7 +117,7 @@ class TestVisionCrops(unittest.TestCase):
 
     def test_calculate_crop_box_clamping_left(self):
         # Face all the way on the left (x=50) -> cannot go negative
-        x, y, w, h = calculate_crop_box(
+        x, _y, w, _h = calculate_crop_box(
             frame_width=1920,
             frame_height=1080,
             face_center_x=50,
@@ -131,7 +129,7 @@ class TestVisionCrops(unittest.TestCase):
 
     def test_calculate_crop_box_clamping_right(self):
         # Face all the way on the right (x=1900) -> cannot exceed 1920 - 608
-        x, y, w, h = calculate_crop_box(
+        x, _y, w, _h = calculate_crop_box(
             frame_width=1920,
             frame_height=1080,
             face_center_x=1900,
@@ -199,7 +197,7 @@ class TestPackaging(unittest.TestCase):
         self.assertIn("youtube", packaged)
         self.assertIn("reels", packaged)
         self.assertIn("tiktok", packaged)
-        
+
         # YouTube checks
         self.assertIn("#Shorts", packaged["youtube"]["title"])
         self.assertIn("#education", packaged["youtube"]["hashtags"])

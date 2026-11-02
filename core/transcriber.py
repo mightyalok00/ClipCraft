@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any
 
 _model_cache = {}
 
@@ -15,7 +14,7 @@ def detect_device() -> str:
         import ctranslate2  # type: ignore
         if "cuda" in ctranslate2.get_supported_devices():
             return "cuda"
-    except Exception:
+    except (ImportError, AttributeError, RuntimeError):
         pass
     return "cpu"
 
@@ -40,7 +39,7 @@ def get_whisper_model(model_size: str = "small", device: str = "auto"):
             device = "cpu"
             model = WhisperModel(model_size, device="cpu", compute_type="int8")
         else:
-            raise e
+            raise
 
     _model_cache[(model_size, device)] = model
     return model, device
@@ -50,8 +49,8 @@ def transcribe(
     audio_path: str | Path,
     model_size: str = "small",
     device: str = "auto",
-    language: Optional[str] = "en",
-) -> Dict[str, Any]:
+    language: str | None = "en",
+) -> dict[str, Any]:
     """Transcribe audio with segment and word timestamps. Caches to .words.json and .srt."""
     audio_p = Path(audio_path)
     cache_json = audio_p.with_suffix(".words.json")
@@ -63,7 +62,7 @@ def transcribe(
             cached_data = json.loads(cache_json.read_text(encoding="utf-8"))
             if isinstance(cached_data, dict) and "segments" in cached_data:
                 return cached_data
-        except Exception:
+        except (json.JSONDecodeError, OSError):
             pass
 
     model, actual_device = get_whisper_model(model_size, device)
@@ -125,14 +124,14 @@ def transcribe(
     try:
         cache_json.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
         cache_srt.write_text("\n".join(srt_lines), encoding="utf-8")
-    except Exception as e:
+    except OSError as e:
         print(f"[transcriber] Failed writing cache: {e}")
 
     return result
 
 
 def _format_srt_time(seconds: float) -> str:
-    total_ms = int(round(seconds * 1000))
+    total_ms = round(seconds * 1000)
     ms = total_ms % 1000
     total_s = total_ms // 1000
     s = total_s % 60
@@ -140,3 +139,4 @@ def _format_srt_time(seconds: float) -> str:
     m = total_m % 60
     h = total_m // 60
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+

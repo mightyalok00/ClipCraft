@@ -1,12 +1,10 @@
 """High-Production Animated Karaoke Subtitles (.ass for libass)."""
 from __future__ import annotations
 
-import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Union
-
-from config import FONTS_DIR
+from typing import Any
 
 
 @dataclass
@@ -62,10 +60,10 @@ PRESETS = {
 
 
 def generate_ass_subtitles(
-    words: List[Union[Dict[str, Any], WordToken]],
+    words: Sequence[dict[str, Any] | WordToken | Any],
     output_ass_path: Path,
     preset_name: str = "bold_yellow",
-    style: Optional[str] = None,
+    style: str | None = None,
     hook_text: str = "",
     clip_offset: float = 0.0,
     width: int = 1080,
@@ -100,9 +98,6 @@ def generate_ass_subtitles(
     y_pos = int(height * 0.72)
 
     for group in chunks:
-        g_start = max(0.0, group[0]["start"] - clip_offset)
-        g_end = max(g_start + 0.3, group[-1]["end"] - clip_offset)
-
         # For each word in the group, build animated karaoke line
         # When word w is active: color is preset["active"], else preset["primary"]
         for active_idx, target_word in enumerate(group):
@@ -150,7 +145,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 
 def _format_ass_time(seconds: float) -> str:
-    total_cs = int(round(seconds * 100))
+    total_cs = round(seconds * 100)
     cs = total_cs % 100
     total_s = total_cs // 100
     s = total_s % 60

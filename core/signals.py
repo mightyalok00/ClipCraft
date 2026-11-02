@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import wave
-import numpy as np
 from pathlib import Path
-from typing import Dict, List, Tuple, Any
+from typing import Any
+
+import numpy as np
 
 
-def compute_loudness_curve(wav_path: str | Path, window_ms: int = 100) -> Dict[str, Any]:
+def compute_loudness_curve(wav_path: str | Path, window_ms: int = 100) -> dict[str, Any]:
     """Compute the RMS loudness envelope over a 16kHz mono WAV file."""
     path = str(wav_path)
     with wave.open(path, "rb") as wf:
@@ -42,7 +43,7 @@ def compute_loudness_curve(wav_path: str | Path, window_ms: int = 100) -> Dict[s
     }
 
 
-def find_audio_peaks(loudness_data: Dict[str, Any], top_n: int = 10) -> List[Tuple[float, float]]:
+def find_audio_peaks(loudness_data: dict[str, Any], top_n: int = 10) -> list[tuple[float, float]]:
     """Identify the loudest audio peaks (excitement, screams, laughter)."""
     rms = np.array(loudness_data.get("rms", []))
     if len(rms) == 0:
@@ -67,10 +68,10 @@ def find_audio_peaks(loudness_data: Dict[str, Any], top_n: int = 10) -> List[Tup
 
 
 def detect_silences(
-    loudness_data: Dict[str, Any],
+    loudness_data: dict[str, Any],
     min_silence_sec: float = 0.55,
     silence_threshold: float = 0.08,
-) -> List[Tuple[float, float]]:
+) -> list[tuple[float, float]]:
     """Locate quiet dead-air silence spans suitable for jump-cutting."""
     rms = np.array(loudness_data.get("rms", []))
     if len(rms) == 0:
@@ -79,7 +80,7 @@ def detect_silences(
     win_sec = loudness_data["window_sec"]
     is_quiet = rms < silence_threshold
 
-    silences: List[Tuple[float, float]] = []
+    silences: list[tuple[float, float]] = []
     in_silence = False
     start_idx = 0
 
@@ -98,7 +99,7 @@ def detect_silences(
 
 def snap_to_silence(
     time_sec: float,
-    silences: List[Tuple[float, float]],
+    silences: list[tuple[float, float]],
     is_start: bool = True,
     max_shift: float = 1.0,
 ) -> float:

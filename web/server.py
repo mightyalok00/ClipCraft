@@ -3,20 +3,18 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import queue
 import threading
 import time
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
-from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
+from config import SHORTS_DIR, load_config, save_config
+from core.pipeline import process_video
+from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-
-from config import SHORTS_DIR, load_config, save_config, ROOT_DIR
-from core.pipeline import process_video
 
 app = FastAPI(title="ClipCraft — Next-Gen AI Video Clipper")
 
@@ -26,8 +24,8 @@ STATIC_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # In-memory job state and SSE event queues
-JOBS: Dict[str, Dict[str, Any]] = {}
-EVENT_QUEUES: Dict[str, queue.Queue] = {}
+JOBS: dict[str, dict[str, Any]] = {}
+EVENT_QUEUES: dict[str, queue.Queue] = {}
 
 
 class JobCreateRequest(BaseModel):
@@ -40,13 +38,13 @@ class JobCreateRequest(BaseModel):
 
 
 class ConfigUpdateRequest(BaseModel):
-    llm_provider: Optional[str] = None
-    gemini_api_key: Optional[str] = None
-    groq_api_key: Optional[str] = None
-    openai_api_key: Optional[str] = None
-    ollama_base_url: Optional[str] = None
-    whisper_model: Optional[str] = None
-    whisper_device: Optional[str] = None
+    llm_provider: str | None = None
+    gemini_api_key: str | None = None
+    groq_api_key: str | None = None
+    openai_api_key: str | None = None
+    ollama_base_url: str | None = None
+    whisper_model: str | None = None
+    whisper_device: str | None = None
 
 
 def _background_worker(job_id: str, req: JobCreateRequest):
@@ -73,7 +71,7 @@ def _background_worker(job_id: str, req: JobCreateRequest):
         JOBS[job_id]["status"] = "completed"
         JOBS[job_id]["result"] = manifest
         q.put({"job_id": job_id, "stage": "completed", "fraction": 1.0, "message": "Done", "manifest": manifest})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         JOBS[job_id]["status"] = "failed"
         JOBS[job_id]["error"] = str(e)
         q.put({"job_id": job_id, "stage": "error", "fraction": 0.0, "message": f"Failed: {e}"})
@@ -124,7 +122,7 @@ async def list_jobs():
                         "result": data,
                         "created_at": data.get("created_at", 0),
                     })
-                except Exception:
+                except (json.JSONDecodeError, OSError):
                     pass
     return sorted(results, key=lambda j: j.get("created_at", 0), reverse=True)
 
@@ -143,7 +141,7 @@ async def stream_job(job_id: str):
                     if item.get("stage") in ("completed", "error"):
                         return
                 await asyncio.sleep(0.3)
-            except Exception:
+            except (asyncio.CancelledError, GeneratorExit):
                 break
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
@@ -166,3 +164,4 @@ async def get_config():
 async def update_config(req: ConfigUpdateRequest):
     updates = {k: v for k, v in req.dict().items() if v is not None}
     return save_config(updates)
+

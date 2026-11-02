@@ -9,41 +9,36 @@ from __future__ import annotations
 
 import argparse
 import os
-import subprocess
 import sys
 import time
 from pathlib import Path
 
 # Fix Windows console UTF-8 output
 if sys.platform == "win32":
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 from config import (
+    detect_hardware,
     load_config,
     save_config,
-    detect_hardware,
-    SHORTS_DIR,
-    DOWNLOADS_DIR,
-    ROOT_DIR,
 )
 from core.pipeline import process_video
 
 
 def print_banner():
-    banner = r"""
-   _____ _ _         _____            __ _   
-  / ____| (_)       / ____|          / _| |  
- | |    | |_ _ __  | |     _ __ __ _| |_| |_ 
- | |    | | | '_ \ | |    | '__/ _` |  _| __|
- | |____| | | |_) || |____| | | (_| | | | |_ 
-  \_____|_|_| .__/  \_____|_|  \__,_|_|  \__|
-            | |                              
-            |_|   Universal AI Shorts Engine ⚡
-"""
+    banner = (
+        r"   _____ _ _         _____            __ _   " + "\n"
+        r"  / ____| (_)       / ____|          / _| |  " + "\n"
+        r" | |    | |_ _ __  | |     _ __ __ _| |_| |_ " + "\n"
+        r" | |    | | | '_ \ | |    | '__/ _` |  _| __|" + "\n"
+        r" | |____| | | |_) || |____| | | (_| | | | |_ " + "\n"
+        r"  \_____|_|_| .__/  \_____|_|  \__,_|_|  \__|" + "\n"
+        r"            | |                              " + "\n"
+        r"            |_|   Universal AI Shorts Engine ⚡"
+    )
     print(banner)
 
 
@@ -98,7 +93,7 @@ def handle_clip(args):
             output_dir=Path(args.out_dir) if args.out_dir else None,
             progress_callback=cli_progress_callback,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"\n❌ Pipeline failed: {e}")
         import traceback
         traceback.print_exc()
@@ -124,9 +119,8 @@ def handle_clip(args):
     job_dir = Path(manifest.get("job_dir", ""))
     print(f"\n📂 All deliverables saved to:\n   {job_dir}")
 
-    if args.open and job_dir.exists():
-        if sys.platform == "win32":
-            os.startfile(str(job_dir))
+    if args.open and job_dir.exists() and sys.platform == "win32":
+        os.startfile(str(job_dir))
 
 
 def handle_web(args):
@@ -239,3 +233,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -1,10 +1,11 @@
 """Global Configuration for ClipCraft."""
 from __future__ import annotations
 
-import os
 import json
+import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
+
 from dotenv import load_dotenv
 
 # Base paths
@@ -27,7 +28,7 @@ EMOJI_DIR = ASSETS_DIR / "emoji"
 
 CONFIG_FILE = ROOT_DIR / "config.local.json"
 
-DEFAULT_CONFIG: Dict[str, Any] = {
+DEFAULT_CONFIG: dict[str, Any] = {
     "llm_provider": "gemini",  # gemini, groq, openai, ollama
     "gemini_api_key": os.environ.get("GEMINI_API_KEY", ""),
     "groq_api_key": os.environ.get("GROQ_API_KEY", ""),
@@ -47,12 +48,12 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 }
 
 
-def detect_hardware() -> Dict[str, Any]:
+def detect_hardware() -> dict[str, Any]:
     """Detect available compute and hardware acceleration engines."""
     import shutil
     import subprocess
 
-    hw: Dict[str, Any] = {
+    hw: dict[str, Any] = {
         "cpu_count": os.cpu_count() or 4,
         "has_cuda": False,
         "has_nvenc": False,
@@ -64,11 +65,11 @@ def detect_hardware() -> Dict[str, Any]:
     try:
         import torch
         hw["has_cuda"] = torch.cuda.is_available()
-    except Exception:
+    except (ImportError, RuntimeError, OSError):
         try:
             import ctranslate2
             hw["has_cuda"] = ctranslate2.get_cuda_device_count() > 0
-        except Exception:
+        except (ImportError, RuntimeError, OSError):
             hw["has_cuda"] = False
 
     # Check FFmpeg encoders
@@ -81,36 +82,37 @@ def detect_hardware() -> Dict[str, Any]:
                 encoding="utf-8",
                 errors="ignore",
                 timeout=3,
+                check=False,
             )
             stdout = res.stdout or ""
             hw["has_nvenc"] = "h264_nvenc" in stdout
             hw["has_qsv"] = "h264_qsv" in stdout
-        except Exception:
+        except (subprocess.SubprocessError, OSError):
             pass
 
     return hw
 
 
-def load_config() -> Dict[str, Any]:
+def load_config() -> dict[str, Any]:
     """Load configuration merged with overrides."""
     conf = dict(DEFAULT_CONFIG)
     if CONFIG_FILE.exists():
         try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            with open(CONFIG_FILE, encoding="utf-8") as f:
                 user_conf = json.load(f)
                 conf.update(user_conf)
-        except Exception as e:
+        except (OSError, json.JSONDecodeError) as e:
             print(f"[config] Failed to load {CONFIG_FILE}: {e}")
     return conf
 
 
-def save_config(updates: Dict[str, Any]) -> Dict[str, Any]:
+def save_config(updates: dict[str, Any]) -> dict[str, Any]:
     """Save user configuration."""
     conf = load_config()
     conf.update(updates)
     try:
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(conf, f, indent=2, ensure_ascii=False)
-    except Exception as e:
+    except (OSError, TypeError) as e:
         print(f"[config] Failed to save {CONFIG_FILE}: {e}")
     return conf

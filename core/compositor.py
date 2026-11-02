@@ -2,18 +2,18 @@
 """High-Performance FFmpeg Hardware-Accelerated Video Compositor."""
 from __future__ import annotations
 
-import os
-import shutil
+import contextlib
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any
 
 from config import FONTS_DIR
-from .vision import calculate_crop_window, detect_faces
+
 from .subtitles import generate_ass_subtitles
+from .vision import calculate_crop_window, detect_faces
 
 
-def detect_hw_encoder() -> Tuple[str, List[str]]:
+def detect_hw_encoder() -> tuple[str, list[str]]:
     """Determine best available H.264 video encoder."""
     try:
         proc = subprocess.run(["ffmpeg", "-encoders"], capture_output=True, text=True, check=True)
@@ -22,7 +22,7 @@ def detect_hw_encoder() -> Tuple[str, List[str]]:
             return "h264_nvenc", ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "23"]
         if "h264_qsv" in out:
             return "h264_qsv", ["-c:v", "h264_qsv", "-global_quality", "23"]
-    except Exception:
+    except (subprocess.SubprocessError, OSError):
         pass
     # CPU fallback
     return "libx264", ["-c:v", "libx264", "-preset", "fast", "-crf", "22"]
@@ -34,10 +34,10 @@ def render_clip(
     end_time: float,
     output_path: Path,
     layout: str = "facetrack",
-    words: Optional[List[Dict[str, Any]]] = None,
+    words: list[dict[str, Any]] | None = None,
     caption_preset: str = "bold_yellow",
     hook_text: str = "",
-    target_res: Tuple[int, int] = (1080, 1920),
+    target_res: tuple[int, int] = (1080, 1920),
 ) -> Path:
     """Render a vertical 9:16 short with smart crop, animated captions, and audio normalization."""
     duration = end_time - start_time
@@ -132,9 +132,7 @@ def render_clip(
 
     # Clean up transient .ass file if created
     if ass_path.exists():
-        try:
+        with contextlib.suppress(OSError):
             ass_path.unlink()
-        except Exception:
-            pass
 
     return output_path

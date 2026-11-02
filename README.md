@@ -204,3 +204,4 @@ ClipCraft is released under the **MIT License**. Open-source assets included:
 - OpenCV YuNet face detector: MIT License.
 - Fonts (Montserrat, Anton, Poppins): SIL Open Font License (OFL).
 - Emoji icons: Twitter Twemoji (CC-BY 4.0).
+
