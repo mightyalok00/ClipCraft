@@ -5,6 +5,21 @@
   Local-first • Hardware-accelerated • YuNet Face Tracking • Word-Level Animated Subtitles • Multi-LLM Virality Scoring
 </p>
 
+<p align="center">
+  <a href="https://github.com/mightyalok00/ClipCraft/actions/workflows/ci.yml">
+    <img src="https://github.com/mightyalok00/ClipCraft/actions/workflows/ci.yml/badge.svg" alt="CI Status">
+  </a>
+  <a href="https://github.com/mightyalok00/ClipCraft/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/badge/GitHub%20Actions-Run%20Test%20Workflow-2ea44f?style=flat&logo=githubactions&logoColor=white" alt="Run CI Workflow">
+  </a>
+  <a href="https://github.com/mightyalok00/ClipCraft/actions/workflows/generate_clips.yml">
+    <img src="https://img.shields.io/badge/GitHub%20Actions-Run%20Clip%20Workflow-blue?style=flat&logo=githubactions&logoColor=white" alt="Run Clip Workflow">
+  </a>
+  <a href="https://github.com/mightyalok00/ClipCraft/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-purple.svg" alt="License">
+  </a>
+</p>
+
 ---
 
 ## 🌟 Why ClipCraft?
@@ -126,6 +141,20 @@ python main.py clip "https://youtu.be/..." -p "find the funniest moment when the
 | `--prompt` | `-p` | Custom guidance prompt to steer the LLM | Custom text string |
 | `--out-dir` | `-o` | Custom output directory | Defaults to `output/shorts/` |
 | `--open` | | Automatically open folder in Windows Explorer | Flag |
+
+### D. Trigger Workflows on GitHub (One-Click "Run Workflow")
+You can run automated test suites or trigger cloud clipping jobs directly from the GitHub UI:
+
+1. **Run CI & Test Suite Button:**
+   - Go to [**GitHub Actions → CI & Test Suite**](https://github.com/mightyalok00/ClipCraft/actions/workflows/ci.yml).
+   - Click the **"Run workflow"** button on the right.
+   - Choose your verification task (`all`, `unit_tests`, or `lint_check`) and click **Run workflow**.
+
+2. **Run Cloud Clipping Job Button:**
+   - Go to [**GitHub Actions → Generate Shorts & Clips**](https://github.com/mightyalok00/ClipCraft/actions/workflows/generate_clips.yml).
+   - Click the **"Run workflow"** button on the right.
+   - Paste your YouTube URL, select your content category and caption style, and click **Run workflow**.
+   - Download the rendered clips directly from the **Artifacts** section once complete.
 
 ---
 

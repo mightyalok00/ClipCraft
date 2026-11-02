@@ -1,0 +1,59 @@
+name: CI & Test Suite
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Verification Suite to Execute'
+        required: true
+        type: choice
+        default: 'all'
+        options:
+          - 'all'
+          - 'unit_tests'
+          - 'lint_check'
+
+jobs:
+  test:
+    name: Run Verification (${{ matrix.os }} - Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install FFmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v3
+        with:
+          ffmpeg-version: 'release'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+          pip install -r requirements.txt
+
+      - name: Run Linter Diagnostics (Ruff)
+        if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'lint_check' || github.event_name != 'workflow_dispatch' }}
+        run: |
+          ruff check .
+
+      - name: Run Automated Test Suite
+        if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'unit_tests' || github.event_name != 'workflow_dispatch' }}
+        run: |
+          python -m unittest discover -s tests -p "test_*.py" -v
